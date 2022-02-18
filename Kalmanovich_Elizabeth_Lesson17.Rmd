@@ -1,0 +1,145 @@
+---
+title: "Regression Analysis of Sahlins and Ophthalmology Data Sets"
+author: 'Elizabeth Kalmanovich'
+date: "6/7/21"
+output: html_document
+---
+## Sahlins
+### Scatterplot
+
+```{r}
+#install.packages('carData')
+library(carData)
+summary(Sahlins)
+
+plot(Sahlins$consumers, Sahlins$acres, pch = 1,
+     main= "1.(a) Scatterplot of acres (Y) versus consumers (X)", xlab= "consumers", ylab= "acres")
+
+```
+The data seems to be pretty randomly dispersed, with potentially a slightly positive relationship.
+There are no strong linear patterns visible.
+One thing that can be noted is most of the y-axis data is between 2.0 and 2.5 acres.
+A household with a lower consumer/gardener ratio tends to cultivate less land per gardener.
+There is one point at (1.15, 3.09), where the consumer ratio is low but a very high amount of acres is cultivated.
+
+### Grouping
+
+```{r}
+
+group1 <- Sahlins[1:7,]
+group2 <- Sahlins[8:13,]
+group3 <- Sahlins[14:20,]
+
+plot(Sahlins$consumers, Sahlins$acres, pch = 1,
+     main= "1.(b) with regression line and group means plotted", xlab= "consumers", ylab= "acres")
+points(mean(group1$consumers), mean(group1$acres), col="red", pch = 19)
+points(mean(group2$consumers), mean(group2$acres), col="red", pch = 19)
+points(mean(group3$consumers), mean(group3$acres), col="red", pch = 19)
+segments(x0 = mean(group1$consumers), y0 = mean(group1$acres), x1 = mean(group2$consumers), y1 = mean(group2$acres), col = "red")
+segments(x0 = mean(group2$consumers), y0 = mean(group2$acres), x1 = mean(group3$consumers), y1 = mean(group3$acres), col = "red")
+abline(lm(Sahlins$acres~Sahlins$consumers), col= "blue")
+legend("bottomright",c("Ordinary Least Squares","Group Means"),cex=.8,col=c("blue","red"),pch=c(NA,19), lty = 1)
+
+```
+Both lines show a slightly increasing relationship between consumers and acres.
+The reason that the red line dips from group1 to group2 is because there is an outlier in group 2 with significantly low acres/gardener ratio.
+Otherwise both lines do help in  describing the relationship, maybe the simple regression more so because it is not so clearly affected by the outlier.
+
+### Boxplot
+
+```{r}
+
+Sahlins$group <- cut(as.numeric(rownames(Sahlins)), breaks=c(0, 7, 13, 20), labels=1:3)
+boxplot(acres~group,data = Sahlins, xlab = "group", ylab = "acres", main = "1.(c) Boxplot of acres by group")
+
+```
+There is an outlier in group 2 where the acre cultivation is significantly lower than similar consumer ratios.
+It shows in the first group with the lowest consumer/gardener ratio, there is the largest variety of amount of land cultivated per gardener.
+In group 3, the mean of the land cultivated is higher than the other two groups, along with most data points. 
+
+### Regression
+
+
+```{r}
+
+newSahlins <- Sahlins[-c(12),] 
+newgroup1 <- newSahlins[1:7,]
+newgroup2 <- newSahlins[8:12,]
+newgroup3 <- newSahlins[13:19,]
+
+plot(newSahlins$consumers, newSahlins$acres, pch = 1,
+     main= "1.(a) Scatterplot of acres (Y) versus consumers (X)", xlab= "consumers", ylab= "acres")
+points(mean(newgroup1$consumers), mean(newgroup1$acres), col="red", pch = 19)
+points(mean(newgroup2$consumers), mean(newgroup2$acres), col="red", pch = 19)
+points(mean(newgroup3$consumers), mean(newgroup3$acres), col="red", pch = 19)
+segments(x0 = mean(newgroup1$consumers), y0 = mean(newgroup1$acres), x1 = mean(newgroup2$consumers), y1 = mean(newgroup2$acres), col = "red")
+segments(x0 = mean(newgroup2$consumers), y0 = mean(newgroup2$acres), x1 = mean(newgroup3$consumers), y1 = mean(newgroup3$acres), col = "red")
+abline(lm(newSahlins$acres~newSahlins$consumers), col= "blue")
+legend("bottomright",c("Ordinary Least Squares","Group Means"),cex=.8,col=c("blue","red"),pch=c(NA,19), lty = 1)
+
+```
+The new means follow a stronger linear positive pattern than before. 
+The linear relationship between the means of the groups falls closely alongside the simple regression line.
+The regression line also fits the remaining points better than before.
+
+## Ophthalmology
+### Plot LOESS Lines
+
+```{r}
+
+op <- read.csv("ophthalmology.csv")
+names(op)
+
+op[is.na(op)] = 0
+op$Max.Pressure <- apply(X=op[8:13], MARGIN=1, FUN=max)
+
+plot(op$Fluid.at.24h, op$Max.Pressure, pch = 1,
+     main= "2.(a) Max.Pressure vs. Fluid.At.24hr with OLS line and LOESS lines", xlab= "Fluid.At.24hr", ylab= "Max.Pressure")
+legend("topright",c("Ordinary Least Squares","LOESS symmetric", "LOESS Gaussian"),cex=.8,col=c("black", "blue","red"),pch=151)
+abline(lm(op$Max.Pressure~op$Fluid.at.24h), col= "black")
+#lines(sort(op$Fluid.at.24h), predict(loess(op$Max.Pressure ~ op$Fluid.at.24h), family="gaussian" ),col="green")
+out1 <- loess(Max.Pressure ~ Fluid.at.24h,data=op, family="symmetric")
+out2 <- loess(Max.Pressure ~ Fluid.at.24h,data=op, family="gaussian")
+lines(sort(op$Fluid.at.24h), predict(out1), col="blue")
+lines(sort(op$Fluid.at.24h), predict(out2), col="red")
+
+```
+The data could be very weakly linear, but the points seems pretty scattered. 
+The least squares regression is positive, but the LOESS lines don't have a notable direction or pattern.
+It should be noted that in the 1st and 2nd quartiles of the data, people with lower Fluid.At.24h consistently have lower max pressures.
+On the other hand, the max pressure become much less predictabe for people with higher Fluid at 24 hr rates.
+
+### LOESS Using Log
+
+```{r}
+
+plot(op$Fluid.at.24h, log(op$Max.Pressure), pch = 1,
+     main= "2.(b) same using log(Max.Pressure) as the dependent variable", xlab= "Fluid.At.24hr", ylab= "log(Max.Pressure)")
+legend("bottomright",c("Ordinary Least Squares","LOESS symmetric", "LOESS Gaussian"),cex=.8,col=c("black", "blue","red"),lty=1)
+abline(lm(log(op$Max.Pressure)~op$Fluid.at.24h), col= "black")
+out1 <- loess(log(op$Max.Pressure) ~ Fluid.at.24h,data=op, family="symmetric")
+out2 <- loess(log(op$Max.Pressure) ~ Fluid.at.24h,data=op, family="gaussian")
+lines(sort(op$Fluid.at.24h), predict(out1), col="blue")
+lines(sort(op$Fluid.at.24h), predict(out2), col="red")
+
+```
+The symmetric and gaussian LOESS curves are more similar, and overlap more than in part a.
+The analysis is basically the same, but the points are less crammed in b, so the graph might be easier to interpret.
+
+### More Transformations
+
+```{r}
+
+plot(log(op$Fluid.at.24h), log(op$Max.Pressure), pch = 1,
+     main= "2.(c) same using log(Max.Pressure) and log(Fluid.at.24h)", xlab= "log(Fluid.at.24h)", ylab= "log(Max.Pressure)")
+legend("topleft",c("Ordinary Least Squares","LOESS symmetric", "LOESS Gaussian"),cex=.8,col=c("black", "blue","red"),lty=1)
+abline(lm(log(op$Max.Pressure)~log(op$Fluid.at.24h)), col= "black")
+out1 <- loess(log(op$Max.Pressure) ~ log(op$Fluid.at.24h),data=op, family="symmetric")
+out2 <- loess(log(op$Max.Pressure) ~ log(op$Fluid.at.24h),data=op, family="gaussian")
+lines(sort(log(op$Fluid.at.24h)), predict(out1), col="blue")
+lines(sort(log(op$Fluid.at.24h)), predict(out2), col="red")
+
+```
+A linear patter is much more apparent after logging both variables. 
+The regression line follows the points smoothly with a positive relationship.
+The LOESS curves are still a bit wacky to me, and they don't appear to correlate with the points better than before taking the log.
